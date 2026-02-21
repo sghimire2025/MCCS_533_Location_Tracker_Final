@@ -1,6 +1,9 @@
 # Location Tracker - Multiplatform Mobile Application
 
 **Course**: Software Engineering and Multiplatform App Development   (MSCS-533-A01) 
+**Professor**: Garry Perry 
+
+
 **Student**: Suresh Ghimire 
 **Project**: Final Software Development Project  
 **Framework**: .NET MAUI (Multi-platform App UI)  
@@ -94,7 +97,7 @@ LocationTrackerFinal/
 
 ---
 
-## 📸 Screenshots
+## Screenshots
 
 ### Main Interface
 ![Main Screen](screenshots/main-screen.png)
@@ -281,7 +284,7 @@ To ensure smooth performance on mobile devices:
 
 ---
 
-## 🔮 Future Enhancements
+## Future Enhancements
 
 - [ ] User input for origin/destination addresses
 - [ ] Real GPS tracking (not simulated)
