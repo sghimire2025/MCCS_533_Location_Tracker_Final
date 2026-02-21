@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:LocationTrackerFinal.ViewModels"
+             xmlns:controls="clr-namespace:LocationTrackerFinal.Controls"
+             xmlns:maps="clr-namespace:Microsoft.Maui.Controls.Maps;assembly=Microsoft.Maui.Controls.Maps"
+             x:Class="LocationTrackerFinal.MainPage"
+             x:DataType="viewmodels:MainViewModel">
+
+    <Grid RowDefinitions="Auto,*" Padding="0">
+        <!-- Control Section -->
+        <VerticalStackLayout Grid.Row="0" Spacing="10" Padding="15" BackgroundColor="{StaticResource Primary}">
+
+            <!-- Route Info -->
+            <Label 
+                Text="Van Ness Ave and Fell St → 2229-2201 Geary Blvd" 
+                FontSize="16" 
+                HorizontalOptions="Center"
+                TextColor="White"
+                Opacity="0.9"/>
+
+            <!-- Button Container -->
+            <HorizontalStackLayout HorizontalOptions="Center" Margin="0,10,0,0">
+                <!-- Start Tracking Button -->
+                <Button 
+                    Text="Start Tracking"
+                    Command="{Binding StartTrackingCommand}"
+                    IsVisible="{Binding IsTracking, Converter={StaticResource InvertedBoolConverter}}"
+                    BackgroundColor="White"
+                    TextColor="{StaticResource Primary}"
+                    FontAttributes="Bold"
+                    HeightRequest="45"
+                    WidthRequest="200"
+                    CornerRadius="10"/>
+
+                <!-- Stop Tracking Button -->
+                <Button 
+                    Text="Stop Tracking"
+                    Command="{Binding StopTrackingCommand}"
+                    IsVisible="{Binding IsTracking}"
+                    BackgroundColor="#D32F2F"
+                    TextColor="White"
+                    FontAttributes="Bold"
+                    HeightRequest="45"
+                    WidthRequest="200"
+                    CornerRadius="10"/>
+            </HorizontalStackLayout>
+
+            <!-- Error Message Display -->
+            <Frame 
+                IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}"
+                BackgroundColor="#FFEBEE"
+                BorderColor="#F44336"
+                CornerRadius="10"
+                Padding="10"
+                Margin="0,10,0,0">
+                <Label 
+                    Text="{Binding ErrorMessage}"
+                    TextColor="#C62828"
+                    FontSize="14"/>
+            </Frame>
+
+        </VerticalStackLayout>
+
+        <!-- Map Section with Heat Map Overlay -->
+        <controls:HeatMapOverlay 
+            Grid.Row="1"
+            x:Name="HeatMap"
+            HeatMapPoints="{Binding HeatMapData}"
+            PathPoints="{Binding PathPointsForBinding}"
+            CurrentPosition="{Binding CurrentPosition}"
+            ShowCurrentPosition="{Binding IsTracking}"
+            IsShowingUser="False"
+            MapType="Street" />
+    </Grid>
+
+</ContentPage>
