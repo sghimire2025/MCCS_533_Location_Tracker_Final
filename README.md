@@ -1,6 +1,6 @@
 # Location Tracker - Multiplatform Mobile Application
 
-**Course**: Software Engineering and Multiplatform App Development (MSCS-533-A01) 
+**Course**: Software Engineering and Multiplatform App Development   (MSCS-533-A01) 
 **Student**: Suresh Ghimire 
 **Project**: Final Software Development Project  
 **Framework**: .NET MAUI (Multi-platform App UI)  
