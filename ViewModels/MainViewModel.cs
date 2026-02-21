@@ -16,6 +16,9 @@ namespace LocationTrackerFinal.ViewModels
         private string _errorMessage = string.Empty;
         private LocationPoint? _currentPosition;
         private IEnumerable<LocationPoint>? _pathPointsForBinding;
+        private bool _isHeatmapEnabled;
+        private int _locationUpdatesSinceLastHeatmapRefresh = 0;
+        private const int HeatmapRefreshInterval = 5; // Refresh heatmap every 5 location updates
 
         // Hardcoded coordinates for MVP
         //Van Ness Ave & Fell St to 2229-2201 Geary Blvd
@@ -32,11 +35,11 @@ namespace LocationTrackerFinal.ViewModels
             _trackingService = trackingService ?? throw new ArgumentNullException(nameof(trackingService));
             _heatMapService = heatMapService ?? throw new ArgumentNullException(nameof(heatMapService));
 
-            HeatMapData = new ObservableCollection<HeatMapPoint>();
             PathPoints = new ObservableCollection<LocationPoint>();
 
             StartTrackingCommand = new Command(async () => await StartTracking());
             StopTrackingCommand = new Command(async () => await StopTracking());
+            ToggleHeatmapCommand = new Command(() => IsHeatmapEnabled = !IsHeatmapEnabled);
 
             // Subscribe to tracking service events
             _trackingService.LocationUpdated += OnLocationUpdated;
@@ -61,7 +64,20 @@ namespace LocationTrackerFinal.ViewModels
             }
         }
 
-        public ObservableCollection<HeatMapPoint> HeatMapData { get; }
+        private IEnumerable<HeatMapPoint>? _heatMapData;
+
+        public IEnumerable<HeatMapPoint>? HeatMapData
+        {
+            get => _heatMapData;
+            set
+            {
+                if (_heatMapData != value)
+                {
+                    _heatMapData = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
         
         public ObservableCollection<LocationPoint> PathPoints { get; }
         
@@ -106,6 +122,32 @@ namespace LocationTrackerFinal.ViewModels
 
         public ICommand StartTrackingCommand { get; }
         public ICommand StopTrackingCommand { get; }
+        public ICommand ToggleHeatmapCommand { get; }
+
+        public bool IsHeatmapEnabled
+        {
+            get => _isHeatmapEnabled;
+            set
+            {
+                if (_isHeatmapEnabled != value)
+                {
+                    System.Diagnostics.Debug.WriteLine($"IsHeatmapEnabled changing from {_isHeatmapEnabled} to {value}");
+                    _isHeatmapEnabled = value;
+                    _heatMapService.SetCrowdSimulationEnabled(value);
+                    System.Diagnostics.Debug.WriteLine($"Called SetCrowdSimulationEnabled({value})");
+                    OnPropertyChanged();
+                    
+                    // Refresh heatmap visualization
+                    // When disabling, this will clear synthetic points from memory
+                    System.Diagnostics.Debug.WriteLine("About to call RefreshHeatMapAsync");
+                    _ = RefreshHeatMapAsync();
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"IsHeatmapEnabled not changing, already {value}");
+                }
+            }
+        }
 
         private async Task StartTracking()
         {
@@ -123,6 +165,9 @@ namespace LocationTrackerFinal.ViewModels
             {
                 // Clear path points when starting new tracking
                 PathPoints.Clear();
+                
+                // Reset heatmap refresh counter
+                _locationUpdatesSinceLastHeatmapRefresh = 0;
                 
                 // Update UI state
                 IsTracking = true;
@@ -148,19 +193,42 @@ namespace LocationTrackerFinal.ViewModels
         {
             try
             {
-                // Call heat map service to get latest data
-                var heatMapPoints = await _heatMapService.GenerateHeatMapDataAsync();
-
-                // Update HeatMapData observable collection
-                HeatMapData.Clear();
-                foreach (var point in heatMapPoints)
+                System.Diagnostics.Debug.WriteLine($"RefreshHeatMapAsync called. IsHeatmapEnabled: {IsHeatmapEnabled}");
+                System.Diagnostics.Debug.WriteLine($"HeatMapService.IsCrowdSimulationEnabled: {_heatMapService.IsCrowdSimulationEnabled}");
+                
+                // Only generate heatmap if crowd simulation is enabled
+                if (!IsHeatmapEnabled)
                 {
-                    HeatMapData.Add(point);
+                    System.Diagnostics.Debug.WriteLine("RefreshHeatMapAsync: Heatmap is disabled, clearing data");
+                    HeatMapData = null;
+                    return;
                 }
+                
+                // Use session-based heatmap when tracking is active to avoid rendering too many points
+                List<HeatMapPoint> heatMapPoints;
+                if (IsTracking && _trackingService.CurrentSessionId > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"RefreshHeatMapAsync: Using session-based heatmap for session {_trackingService.CurrentSessionId}");
+                    heatMapPoints = await _heatMapService.GenerateHeatMapDataForSessionWithCrowdAsync(_trackingService.CurrentSessionId);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("RefreshHeatMapAsync: Using all-data heatmap (tracking not active)");
+                    heatMapPoints = await _heatMapService.GenerateHeatMapDataWithCrowdAsync();
+                }
+
+                System.Diagnostics.Debug.WriteLine($"RefreshHeatMapAsync: Received {heatMapPoints.Count} heatmap points");
+
+                // Replace the entire collection to trigger binding update
+                HeatMapData = heatMapPoints;
+                
+                System.Diagnostics.Debug.WriteLine($"RefreshHeatMapAsync: HeatMapData property set with {heatMapPoints.Count} points");
             }
             catch (Exception ex)
             {
                 ErrorMessage = $"Failed to refresh heat map: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"RefreshHeatMapAsync ERROR: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
             }
         }
 
@@ -180,8 +248,16 @@ namespace LocationTrackerFinal.ViewModels
                 // Update current position to the new location
                 CurrentPosition = e;
                 
-                // Refresh heat map in real-time when location is updated
-                await RefreshHeatMapAsync();
+                // Refresh heat map periodically (not on every update) to reduce load
+                if (IsHeatmapEnabled)
+                {
+                    _locationUpdatesSinceLastHeatmapRefresh++;
+                    if (_locationUpdatesSinceLastHeatmapRefresh >= HeatmapRefreshInterval)
+                    {
+                        _locationUpdatesSinceLastHeatmapRefresh = 0;
+                        await RefreshHeatMapAsync();
+                    }
+                }
             });
         }
 

@@ -239,38 +239,35 @@ namespace LocationTrackerFinal.Platforms.iOS.Handlers
             if (points.Count == 0)
                 return;
 
-            // Set up drawing context
-            context.SetAlpha(0.6f);
-
-            // Define gradient colors (green -> yellow -> red)
-            var colorSpace = CGColorSpace.CreateDeviceRGB();
-            var colors = new CGColor[]
-            {
-                new CGColor(0, 1, 0, 1),    // Green
-                new CGColor(1, 1, 0, 1),    // Yellow
-                new CGColor(1, 0, 0, 1)     // Red
-            };
-            var locations = new nfloat[] { 0.0f, 0.5f, 1.0f };
-            var gradient = new CGGradient(colorSpace, colors, locations);
-
-            // Draw heat map points
+            // Draw heat map points with blue core and light red outer layer
             foreach (var point in points)
             {
                 var coordinate = new CLLocationCoordinate2D(point.Latitude, point.Longitude);
                 var mapPoint = MKMapPoint.FromCoordinate(coordinate);
                 var pointInView = PointForMapPoint(mapPoint);
 
-                // Calculate radius based on intensity and zoom level
-                var radius = (nfloat)(20.0 * point.Intensity / zoomScale);
-                if (radius < 5) radius = 5;
-
-                // Draw radial gradient for each point
                 var center = new CGPoint(pointInView.X, pointInView.Y);
-                context.DrawRadialGradient(
-                    gradient,
-                    center, 0,
-                    center, radius,
-                    CGGradientDrawingOptions.DrawsAfterEndLocation);
+
+                // Draw light red outer layer (#FF6B6B with 30% opacity) - LARGER
+                context.SetFillColor(new CGColor(1.0f, 0.42f, 0.42f, 0.3f)); // #FF6B6B with 30% opacity
+                var outerRadius = (nfloat)(30.0 / zoomScale);
+                if (outerRadius < 15) outerRadius = 15;
+                context.FillEllipseInRect(new CGRect(
+                    center.X - outerRadius,
+                    center.Y - outerRadius,
+                    outerRadius * 2,
+                    outerRadius * 2));
+
+                // Draw blue core circle (#4285F4) - SMALLER than outer layer
+                var alpha = (nfloat)(0.78 + point.Intensity * 0.22); // Vary opacity with intensity
+                context.SetFillColor(new CGColor(0.26f, 0.52f, 0.96f, alpha)); // #4285F4
+                var coreRadius = (nfloat)(15.0 / zoomScale);
+                if (coreRadius < 8) coreRadius = 8;
+                context.FillEllipseInRect(new CGRect(
+                    center.X - coreRadius,
+                    center.Y - coreRadius,
+                    coreRadius * 2,
+                    coreRadius * 2));
             }
         }
 

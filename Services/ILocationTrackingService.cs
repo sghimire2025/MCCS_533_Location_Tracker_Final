@@ -7,6 +7,7 @@ namespace LocationTrackerFinal.Services
         Task<bool> StartTrackingAsync(double originLat, double originLng, double destLat, double destLng);
         Task StopTrackingAsync();
         bool IsTracking { get; }
+        int CurrentSessionId { get; }
         event EventHandler<LocationPoint>? LocationUpdated;
         event EventHandler<string>? ErrorOccurred;
     }

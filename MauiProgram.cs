@@ -95,9 +95,13 @@ public static class MauiProgram
 		builder.Services.AddTransient<IHeatMapService>(sp =>
 		{
 			var repository = sp.GetRequiredService<ILocationRepository>();
+			var crowdSimulator = sp.GetRequiredService<ICrowdSimulator>();
 			var logger = sp.GetRequiredService<ILogger<HeatMapService>>();
-			return new HeatMapService(repository, logger);
+			return new HeatMapService(repository, crowdSimulator, logger);
 		});
+		
+		// Register ICrowdSimulator with singleton lifetime
+		builder.Services.AddSingleton<ICrowdSimulator, CrowdSimulator>();
 		
 		// Register MainViewModel
 		builder.Services.AddTransient<MainViewModel>();

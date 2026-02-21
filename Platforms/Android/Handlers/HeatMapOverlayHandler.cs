@@ -88,12 +88,18 @@ namespace LocationTrackerFinal.Platforms.Android.Handlers
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine($"UpdateHeatMap called with {points?.Count() ?? 0} points");
+                
                 if (_googleMap == null || points == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("UpdateHeatMap: GoogleMap is null or points is null");
                     return;
+                }
 
                 // Remove existing circles
                 if (_heatMapCircles != null)
                 {
+                    System.Diagnostics.Debug.WriteLine($"UpdateHeatMap: Removing {_heatMapCircles.Count} existing heatmap circles");
                     foreach (var circle in _heatMapCircles)
                     {
                         circle?.Remove();
@@ -103,11 +109,15 @@ namespace LocationTrackerFinal.Platforms.Android.Handlers
 
                 var pointsList = points.ToList();
                 if (pointsList.Count == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("UpdateHeatMap: Points list is empty");
                     return;
+                }
 
+                System.Diagnostics.Debug.WriteLine($"UpdateHeatMap: Creating circles for {pointsList.Count} heatmap points");
                 _heatMapCircles = new List<Circle>();
 
-                // Create circles for each heat map point
+                // Create circles for each heat map point with blue core and light red outer layer
                 foreach (var point in pointsList)
                 {
                     if (point == null)
@@ -115,43 +125,48 @@ namespace LocationTrackerFinal.Platforms.Android.Handlers
 
                     var intensity = (float)point.Intensity;
                     
-                    // Calculate color based on intensity (green -> yellow -> red)
-                    int color;
-                    if (intensity < 0.5)
-                    {
-                        // Green to Yellow
-                        var ratio = intensity * 2;
-                        color = global::Android.Graphics.Color.Argb(
-                            (int)(100 + intensity * 100),
-                            (int)(255 * ratio),
-                            255,
-                            0
-                        );
-                    }
-                    else
-                    {
-                        // Yellow to Red
-                        var ratio = (intensity - 0.5f) * 2;
-                        color = global::Android.Graphics.Color.Argb(
-                            (int)(100 + intensity * 100),
-                            255,
-                            (int)(255 * (1 - ratio)),
-                            0
-                        );
-                    }
+                    // Light red outer layer (#FF6B6B with 30% opacity) - LARGER radius
+                    int outerColor = global::Android.Graphics.Color.Argb(
+                        (int)(255 * 0.3), // 30% opacity
+                        255,
+                        107,
+                        107
+                    );
 
-                    var circleOptions = new CircleOptions()
+                    var outerCircleOptions = new CircleOptions()
                         .InvokeCenter(new LatLng(point.Latitude, point.Longitude))
-                        .InvokeRadius(50) // 50 meters radius
-                        .InvokeFillColor(color)
+                        .InvokeRadius(30) // Outer radius in meters - increased for visibility
+                        .InvokeFillColor(outerColor)
                         .InvokeStrokeWidth(0);
 
-                    var circle = _googleMap.AddCircle(circleOptions);
-                    if (circle != null)
+                    var outerCircle = _googleMap.AddCircle(outerCircleOptions);
+                    if (outerCircle != null)
                     {
-                        _heatMapCircles.Add(circle);
+                        _heatMapCircles.Add(outerCircle);
+                    }
+
+                    // Blue core circle (#4285F4) - SMALLER than outer layer
+                    int coreColor = global::Android.Graphics.Color.Argb(
+                        (int)(200 + intensity * 55), // Vary opacity slightly with intensity
+                        66,
+                        133,
+                        244
+                    );
+
+                    var coreCircleOptions = new CircleOptions()
+                        .InvokeCenter(new LatLng(point.Latitude, point.Longitude))
+                        .InvokeRadius(15) // Core radius in meters - smaller than outer layer
+                        .InvokeFillColor(coreColor)
+                        .InvokeStrokeWidth(0);
+
+                    var coreCircle = _googleMap.AddCircle(coreCircleOptions);
+                    if (coreCircle != null)
+                    {
+                        _heatMapCircles.Add(coreCircle);
                     }
                 }
+                
+                System.Diagnostics.Debug.WriteLine($"UpdateHeatMap: Total heatmap circles added: {_heatMapCircles.Count}");
             }
             catch (System.Exception ex)
             {
@@ -193,6 +208,24 @@ namespace LocationTrackerFinal.Platforms.Android.Handlers
             try
             {
                 System.Diagnostics.Debug.WriteLine($"UpdatePathPoints called with {points?.Count() ?? 0} points");
+                
+                // If we have heatmap circles, don't render path points separately
+                // The heatmap already visualizes the path
+                if (_heatMapCircles != null && _heatMapCircles.Count > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("Skipping path points rendering - heatmap is active");
+                    
+                    // Remove any existing path circles
+                    if (_pathCircles != null)
+                    {
+                        foreach (var circle in _pathCircles)
+                        {
+                            circle?.Remove();
+                        }
+                        _pathCircles = null;
+                    }
+                    return;
+                }
                 
                 if (_googleMap == null || points == null)
                 {

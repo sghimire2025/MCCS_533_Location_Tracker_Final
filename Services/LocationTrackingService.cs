@@ -17,6 +17,7 @@ namespace LocationTrackerFinal.Services
         private int _currentSessionId;
 
         public bool IsTracking { get; private set; }
+        public int CurrentSessionId => _currentSessionId;
 
         public event EventHandler<LocationPoint>? LocationUpdated;
         public event EventHandler<string>? ErrorOccurred;
