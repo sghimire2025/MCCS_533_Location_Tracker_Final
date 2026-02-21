@@ -132,7 +132,7 @@ LocationTrackerFinal/
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone `https://github.com/sghimire2025/MCCS_533_Location_Tracker_Final`
    cd LocationTrackerFinal
    ```
 
